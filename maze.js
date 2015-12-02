@@ -37,8 +37,9 @@ function zeroStart() {
 
 //These values will be set to random in resize
 function randomStart() {
-    options.startX = -1;
-    options.startY = -1;
+    var d = calculateMazeDimensions()
+    options.startX = getRandomInt(0, d.x);
+    options.startY = getRandomInt(0, d.y);
     resize(options);   
 }
 
@@ -68,15 +69,7 @@ function depthAnimate() {
         $('#animate').html('pause');
         anim = true;
         animId = window.setInterval(function(){ 
-            var start = new Date();
-
             shiftDepth(options.animSpeed / 100);
-            //*
-            var finish = new Date();
-            var difference = new Date();
-            difference.setTime(finish.getTime() - start.getTime());
-            console.log( "Milliseconds: " + difference.getMilliseconds() );
-            //*/
         } , 50);     
     }
 }
@@ -105,8 +98,6 @@ function checkOpts() {
     resize(options);   
 }
 
-
-
 function setUi() {
     $('#size')[0].value = options.cell_size;
     $('#seed')[0].value = options.seed;    
@@ -132,6 +123,17 @@ $( document ).ready(function() {
     resize(options);
 });
 
+function calculateMazeDimensions() {
+    var dim = { x: 0, y: 0 };
+
+    if(canvas != undefined) {
+        dim.x = Math.floor(canvas.width / (options.cell_size + options.gutter_size));
+        dim.y = Math.floor(canvas.height / (options.cell_size + options.gutter_size));
+    }
+
+    return dim;
+}
+
 function resize(options) {
     if(canvas == undefined || context == undefined)
         return;
@@ -145,29 +147,12 @@ function resize(options) {
 
     $('#canvas').css("background-color", options.wallColor);
 
-    g_w = canvas.width / (options.cell_size + options.gutter_size);
-    g_h = canvas.height / (options.cell_size + options.gutter_size);
-
-    //if(options.drawWalls) {
-        g_w = Math.floor(g_w);
-        g_h = Math.floor(g_h);
-    //} else {
-    //    g_w = Math.ceil(g_w);
-    //    g_h = Math.ceil(g_h);
-    //}
-
-    // we should generate a larger maze, and only draw what can be seen of it, or add height and width, thus preserving the seed
+    var d = calculateMazeDimensions();
 
     options.startColor = randomColor();
     options.endColor = randomColor();
 
-    if(options.startX == -1 || options.startY == -1)
-    {
-        options.startX = getRandomInt(0, g_w);
-        options.startY = getRandomInt(0, g_h);
-    }
-
-    maze = new Maze(g_w, g_h, options);
+    maze = new Maze(d.x, d.y, options);
     maze.draw(context, options);
 }
 
@@ -209,9 +194,9 @@ function Vertex (x, y) {
 			vY =  (options.drawWalls ? options.wallWidth : 0) + options.origin_y + (options.cell_size + options.gutter_size) * y;
         var cR, cG, cB, colorMod;
 
-        //if(options.colorMode == 0) {
+        if(options.colorMode == 0) {
     		colorMod = this.depth/options.maxDepth;
-        /* } else */ if(this.depth < (options.maxDepth/2)) {
+        } else if(this.depth < (options.maxDepth/2)) {
             colorMod = this.depth/options.maxDepth/0.5;
         } else {
             //colorMod = (this.depth/options.maxDepth/0.5) - 0.5; looks dope
@@ -226,14 +211,12 @@ function Vertex (x, y) {
             cB = Math.floor(options.startColor.b + 
                         (options.endColor.b - options.startColor.b) * colorMod);
         
+        //Color the starting cell red
         //if(options.showStart && x == options.startX && y == options.startY) {
         //    console.log("x: "  + x + " y: " + y);
         //    cR = 255;
         //    cB = cG = 0;
         //}
-
-        //if(x == 0 && y == 0)
-        //    console.log('depth: ' + this.depth + ", rgb("+ cR + "," + cG + "," + cB + ")");
 
         //fill
         context.fillStyle = "rgb("+ cR + "," + cG + "," + cB + ")";
@@ -261,7 +244,7 @@ function Vertex (x, y) {
                     (2 * w) + options.gutter_size, 
                     (2 * w) + (2 * options.gutter_size) + options.cell_size
                 );
-            } else if(wall.x == x && wall.y == y - 1) {// top
+            } else if(wall.x == x && wall.y == y - 1) { // top
                 context.fillRect(
                     vX - w - options.gutter_size, 
                     vY - w - options.gutter_size,  
@@ -366,23 +349,6 @@ function Maze (w, h, options) {
 
     $('#startX')[0].value = v.x;
     $('#startY')[0].value = v.y;
-
-    /*
-    recursiveDFS(this, v, 0)
-    function recursiveDFS (maze, v, parentDepth) {
-        maze.grid[v.y][v.x].visited = false;
-        maze.grid[v.y][v.x].depth = parentDepth + 1;
-
-        if(parentDepth + 1 > maze.maxDepth)
-            maze.maxDepth = parentDepth + 1;
-
-        maze.grid[v.y][v.x].adj.forEach(function(a){
-            if(maze.grid[a.y][a.x].visited == true)
-                recursiveDFS(maze, a, maze.grid[v.y][v.x].depth);
-        });
-    }
-    //*/
-
 
     // use iterative dfs to avoid js callstack limits
     v.d = 0;
