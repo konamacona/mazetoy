@@ -1,5 +1,5 @@
 var options = {
-	seed: 11,
+	seed: getRandomInt(0, Math.pow(2, 32)),//11,
 	origin_x: 0,
 	origin_y: 0,
 	cell_size: 7,
@@ -24,6 +24,15 @@ var options = {
 	colorMode: 1,
 	showStart: false,
 	animSpeed: 1,
+	animColor: true,
+}
+
+var colorOpts = {
+	sc_from : { r: 0, g: 0, b:0 },   //original start color
+	sc_to   : { r: 0, g: 0, b:0 },   //new start color
+	ec_from : { r: 0, g: 0, b:0 },   //original end color
+	ec_to   : { r: 0, g: 0, b:0 },   //new end color
+	lerp_perc: 0 //lerp percentage (how far through the lerp we are)
 }
 
 var seed = options.seed;  //40
@@ -32,7 +41,7 @@ var maze, canvas, context;
 function zeroStart() {
 	options.startX = 0;
 	options.startY = 0;
-	resize(options);
+	init(options);
 }
 
 //These values will be set to random in resize
@@ -40,12 +49,12 @@ function randomStart() {
 	var d = calculateMazeDimensions()
 	options.startX = getRandomInt(0, d.x);
 	options.startY = getRandomInt(0, d.y);
-	resize(options);
+	init(options);
 }
 
 function randomSeed() {
 	$('#seed')[0].value = options.seed = getRandomInt(0, 1000000000);
-	resize(options);
+	init(options);
 }
 
 function showhide() {
@@ -54,7 +63,36 @@ function showhide() {
 
 function shiftDepth(shift) {
 	if(maze != undefined && context != undefined) {
-		maze.draw(context, options, shift);
+		maze.draw(context, options, shift / 100);
+	}
+}
+
+//Sets new taret colors and lerps the current colors to them, restarting when
+// the target and current colors are the same
+function shiftColor(shift) {
+	if(colorOpts.sc_to == undefined) {
+		colorOpts.lerp_perc = 0
+		colorOpts.sc_to = randomSeededColor();
+		colorOpts.ec_to = randomSeededColor();
+	}
+
+	if(colorOpts.lerp_perc >= 100) {
+		copyColor(colorOpts.ec_to, colorOpts.ec_from);
+		colorOpts.ec_to = randomSeededColor();
+
+		copyColor(colorOpts.sc_to, colorOpts.sc_from);
+		colorOpts.sc_to = randomSeededColor();
+
+		colorOpts.lerp_perc = 0
+	}
+
+	colorOpts.lerp_perc += shift;
+
+	options.startColor = lerp_color(colorOpts.sc_from, colorOpts.sc_to, colorOpts.lerp_perc);
+	options.endColor = lerp_color(colorOpts.ec_from, colorOpts.ec_to, colorOpts.lerp_perc);
+
+	if(maze != undefined && context != undefined) {
+		maze.draw(context, options, 0);
 	}
 }
 
@@ -69,7 +107,9 @@ function depthAnimate() {
 		$('#animate').html('pause');
 		anim = true;
 		animId = window.setInterval(function(){
-			shiftDepth(options.animSpeed / 100);
+			shiftDepth(options.animSpeed);
+			if(options.animColor)
+				shiftColor(options.animSpeed);
 		} , 50);
 	}
 }
@@ -84,6 +124,7 @@ function checkOpts() {
 	options.colorMode = $('#cyclicColor')[0].checked ? 1 : 0;
 	options.drawWalls = options.outline = $("#walls")[0].checked;
 	options.randomStart = $("#randomStart")[0].checked;
+	options.animColor = $("#animateColor")[0].checked;
 	if(options.randomStart) {
 		$('#startCoords').hide();
 	} else {
@@ -95,7 +136,7 @@ function checkOpts() {
 	if(parseInt($('#startY')[0].value) != NaN)
 		options.startY = parseInt($('#startY')[0].value);
 
-	resize(options);
+	init(options);
 }
 
 function setUi() {
@@ -104,6 +145,7 @@ function setUi() {
 	$('#cyclicColor')[0].checked = options.colorMode == 1;
 	$('#randomStart')[0].checked = options.randomStart;
 	$('#animSpeed')[0].value = options.animSpeed;
+	$('#animateColor')[0].checked = options.animColor;
 	if(options.randomStart) {
 		$('#startCoords').hide();
 	}
@@ -119,8 +161,8 @@ $( document ).ready(function() {
 	canvas = $('#canvas')[0],
 	context = canvas.getContext('2d');
 
-	window.addEventListener('resize', function(){ resize(options); }, false);
-	resize(options);
+	window.addEventListener('resize', function(){ init(options); }, false);
+	init(options);
 });
 
 function calculateMazeDimensions() {
@@ -134,7 +176,7 @@ function calculateMazeDimensions() {
 	return dim;
 }
 
-function resize(options) {
+function init(options) {
 	if(canvas == undefined || context == undefined)
 		return;
 
@@ -149,8 +191,15 @@ function resize(options) {
 
 	var d = calculateMazeDimensions();
 
-	options.startColor = randomColor();
-	options.endColor = randomColor();
+	options.startColor = randomSeededColor();
+	options.endColor = randomSeededColor();
+
+	colorOpts.sc_from = {};
+	copyColor(options.startColor, colorOpts.sc_from);
+	colorOpts.ec_from = {};
+	copyColor(options.endColor, colorOpts.ec_from);
+
+	colorOpts.lerp_perc = 0;
 
 	maze = new Maze(d.x, d.y, options);
 	maze.draw(context, options);
@@ -178,17 +227,10 @@ function Vertex (x, y) {
 	}
 
 	//draw function for display
-	this.draw = function (context, options, shiftDepth, maxDepth) {
-		var o = options
+	this.draw = function (context, o, shiftDepth, maxDepth) {
 		//do depth shifting (animation) in here to avoid looping twice
 		if(shiftDepth != 0) {
-			this.depth += shiftDepth;
-			if( this.depth > maxDepth )
-				this.depth -= maxDepth;
-			else if (this.depth < 0)
-				this.depth += maxDepth;
-
-			this.depth = Math.floor(this.depth);
+			this.depth = Math.floor((this.depth + shiftDepth) % maxDepth);
 		}
 
 		var ww = o.drawWalls ? o.wallWidth : 0;
@@ -196,22 +238,40 @@ function Vertex (x, y) {
 			vY = ww + o.origin_y + (o.cell_size + options.gutter_size) * y;
 		var cR, cG, cB, colorMod;
 
-		if(options.colorMode == 0) {
-			colorMod = this.depth/options.maxDepth;
-		} else if(this.depth < (options.maxDepth/2)) {
-			colorMod = this.depth/options.maxDepth/0.5;
-		} else {
-			//colorMod = (this.depth/options.maxDepth/0.5) - 0.5; looks dope
-			//colorMod = 0.5 - (this.depth/options.maxDepth); also cool
-			colorMod = (1 - (this.depth/options.maxDepth))/0.5;
+		switch(o.colorMode){
+			case 0: //End to end color
+				colorMod = this.depth/o.maxDepth;
+				break;
+			case 1: //Cyclic color
+				if(this.depth < (o.maxDepth/2))
+					colorMod = this.depth/o.maxDepth/0.5;
+				else
+					colorMod = (1 - (this.depth/o.maxDepth))/0.5;
+				break;
+			/*
+			case 2:
+				colorMod = (this.depth/o.maxDepth/0.5) - 0.5;
+				break;
+			case 3:
+				colorMod = 0.5 - (this.depth/o.maxDepth);
+				break;
+			*/
 		}
 
-		var cR = Math.floor(options.startColor.r +
-						(options.endColor.r - options.startColor.r) * colorMod),
-			cG = Math.floor(options.startColor.g +
-						(options.endColor.g - options.startColor.g) * colorMod),
-			cB = Math.floor(options.startColor.b +
-						(options.endColor.b - options.startColor.b) * colorMod);
+		var start = {
+				r: Math.floor(o.startColor.r),
+				g: Math.floor(o.startColor.g),
+				b: Math.floor(o.startColor.b)
+			},
+			end = {
+				r: Math.floor(o.endColor.r),
+				g: Math.floor(o.endColor.g),
+				b: Math.floor(o.endColor.b)
+			}
+
+		var cR = Math.floor(start.r + (end.r - start.r) * colorMod),
+			cG = Math.floor(start.g + (end.g - start.g) * colorMod),
+			cB = Math.floor(start.b + (end.b - start.b) * colorMod);
 
 		//Color the starting cell red
 		//if(options.showStart && x == options.startX && y == options.startY) {
@@ -222,7 +282,7 @@ function Vertex (x, y) {
 
 		//fill
 		context.fillStyle = "rgb("+ cR + "," + cG + "," + cB + ")";
-		context.fillRect(vX, vY, options.cell_size, options.cell_size);
+		context.fillRect(vX, vY, o.cell_size, o.cell_size);
 
 		/* Show depth numbers on cells
 		context.fillStyle = "white";
@@ -372,29 +432,6 @@ function Maze (w, h, options) {
 		}
 	}
 
-	/* Deprecated, now done in vertex.Draw to avoid an extra loop
-	// this function adds (shift * maxDepth) to each depth value, overflow restarts at 1
-	this.shiftDepth = function (shift) {
-		var s = shift * this.maxDepth;
-
-		for(var y = 0; y < this.grid.length; y++) {
-			for(var x = 0; x < this.grid[y].length; x++) {
-				var o = this.grid[y][x].depth;
-
-				this.grid[y][x].depth += s;
-				if( this.grid[y][x].depth > this.maxDepth )
-					this.grid[y][x].depth -= this.maxDepth;
-				else if (this.grid[y][x].depth < 0)
-					this.grid[y][x].depth += this.maxDepth;
-
-				this.grid[y][x].depth = Math.floor(this.grid[y][x].depth);
-
-				//console.log('changed ' + o + ' to ' + this.grid[y][x].depth)
-			}
-		}
-	}
-	//*/
-
 	//Draw function for display
 	this.draw = function (context, options, shiftDepth) {
 		if(shiftDepth == undefined)
@@ -498,10 +535,47 @@ function random() {
 	return x - Math.floor(x);
 }
 
-function randomColor() {
+function randomSeededColor() {
 	return {
 		r: getRandomSeededInt(0, 255),
 		g: getRandomSeededInt(0, 255),
 		b: getRandomSeededInt(0, 255)
 	};
+}
+
+function randomColor() {
+	return {
+		r: getRandomInt(0, 255),
+		g: getRandomInt(0, 255),
+		b: getRandomInt(0, 255)
+	};
+}
+
+function max(i1, i2) {
+	return (i1 > i2) ? i1 : i2;
+}
+
+function min(i1, i2) {
+	return (i1 < i2) ? i1 : i2;
+}
+
+//returns the color which is p between c1 and c2
+function lerp_color(c1, c2, p) {
+	var d = p/100;
+	var r = {
+		r: c1.r + ((c2.r - c1.r) * d),
+		g: c1.g + ((c2.g - c1.g) * d),
+		b: c1.b + ((c2.b - c1.b) * d),
+	}
+	return r;
+}
+
+function copyColor(from, to) {
+	to.r = from.r;
+	to.g = from.g;
+	to.b = from.b;
+}
+
+function sameColor(c1, c2) {
+	return c1.r == c2.r && c1.g == c2.g && c1.b == c2.b;
 }
