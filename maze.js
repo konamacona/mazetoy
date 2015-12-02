@@ -28,6 +28,7 @@ var options = {
 }
 
 var colorOpts = {
+	reset 	: true,
 	sc_from : { r: 0, g: 0, b:0 },   //original start color
 	sc_to   : { r: 0, g: 0, b:0 },   //new start color
 	ec_from : { r: 0, g: 0, b:0 },   //original end color
@@ -61,17 +62,47 @@ function showhide() {
 	$('#menu').toggle();
 }
 
-function shiftDepth(shift) {
+var animId;
+var anim = false;
+function toggleAnimate() {
+	if(anim)
+		stopAnim();
+	else
+		startAnim();
+}
+
+function stopAnim() {
+	$('#animate').html('play');
+	anim = false;
+	if(animId != undefined)
+		window.clearInterval(animId)
+}
+
+function startAnim() {
+	$('#animate').html('pause');
+	anim = true;
+	animId = window.setInterval(function(){
+		animateFrame();
+	}, 50);
+}
+
+function animateFrame() {
+	if(options.animColor)
+		shiftColor(options.animSpeed, false);
+
 	if(maze != undefined && context != undefined) {
-		maze.draw(context, options, shift / 100);
+		maze.draw(context, options, options.animSpeed / 100);
 	}
 }
 
 //Sets new taret colors and lerps the current colors to them, restarting when
 // the target and current colors are the same
-function shiftColor(shift) {
-	if(colorOpts.sc_to == undefined) {
-		colorOpts.lerp_perc = 0
+function shiftColor(shift, redraw) {
+	if(colorOpts.reset) {
+		colorOpts.reset = false;
+		colorOpts.lerp_perc = 0;
+		copyColor(options.startColor, colorOpts.sc_from);
+		copyColor(options.endColor, colorOpts.ec_from);
 		colorOpts.sc_to = randomSeededColor();
 		colorOpts.ec_to = randomSeededColor();
 	}
@@ -88,29 +119,15 @@ function shiftColor(shift) {
 
 	colorOpts.lerp_perc += shift;
 
-	options.startColor = lerp_color(colorOpts.sc_from, colorOpts.sc_to, colorOpts.lerp_perc);
-	options.endColor = lerp_color(colorOpts.ec_from, colorOpts.ec_to, colorOpts.lerp_perc);
+	options.startColor = lerp_color(colorOpts.sc_from,
+									colorOpts.sc_to,
+									colorOpts.lerp_perc);
+	options.endColor = lerp_color(colorOpts.ec_from,
+								  colorOpts.ec_to,
+								  colorOpts.lerp_perc);
 
-	if(maze != undefined && context != undefined) {
+	if(redraw && maze != undefined && context != undefined) {
 		maze.draw(context, options, 0);
-	}
-}
-
-var animId;
-var anim = true;
-function depthAnimate() {
-	if(anim && animId != undefined) {
-		$('#animate').html('play');
-		anim = false;
-		window.clearInterval(animId)
-	} else {
-		$('#animate').html('pause');
-		anim = true;
-		animId = window.setInterval(function(){
-			shiftDepth(options.animSpeed);
-			if(options.animColor)
-				shiftColor(options.animSpeed);
-		} , 50);
 	}
 }
 
@@ -177,6 +194,13 @@ function calculateMazeDimensions() {
 }
 
 function init(options) {
+	var wasAnim = false;
+	if(anim) {
+		console.log('toggling anim');
+		wasAnim = true;
+		toggleAnimate();
+	}
+
 	if(canvas == undefined || context == undefined)
 		return;
 
@@ -194,15 +218,15 @@ function init(options) {
 	options.startColor = randomSeededColor();
 	options.endColor = randomSeededColor();
 
-	colorOpts.sc_from = {};
-	copyColor(options.startColor, colorOpts.sc_from);
-	colorOpts.ec_from = {};
-	copyColor(options.endColor, colorOpts.ec_from);
-
-	colorOpts.lerp_perc = 0;
+	colorOpts.reset = true;
 
 	maze = new Maze(d.x, d.y, options);
+
 	maze.draw(context, options);
+
+	if(wasAnim) {
+		toggleAnimate();
+	}
 }
 
 function Vertex (x, y) {
@@ -510,7 +534,8 @@ function verifyOptions() {
 //http://stackoverflow.com/questions/10673122/how-to-save-canvas-as-an-image-with-canvas-todataurl
 function saveToDisk() {
 	if(canvas != undefined) {
-		var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");  // here is the most important part because if you dont replace you will get a DOM 18 exception.
+		 // here is the most important part because if you dont replace you will get a DOM 18 exception.
+		var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
 		window.location.href=image; // it will save locally
 	}
 }
