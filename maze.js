@@ -1,3 +1,5 @@
+/* global $ */
+
 var options = {
 	seed: getRandomInt(0, Math.pow(2, 32)),//11,
 	origin_x: 0,
@@ -25,7 +27,7 @@ var options = {
 	showStart: false,
 	animSpeed: 1,
 	animColor: true,
-}
+};
 
 var colorOpts = {
 	reset 	: true,
@@ -34,7 +36,7 @@ var colorOpts = {
 	ec_from : { r: 0, g: 0, b:0 },   //original end color
 	ec_to   : { r: 0, g: 0, b:0 },   //new end color
 	lerp_perc: 0 //lerp percentage (how far through the lerp we are)
-}
+};
 
 var seed = options.seed;  //40
 var maze, canvas, context;
@@ -47,14 +49,14 @@ function zeroStart() {
 
 //These values will be set to random in resize
 function randomStart() {
-	var d = calculateMazeDimensions()
+	var d = calculateMazeDimensions();
 	options.startX = getRandomInt(0, d.x);
 	options.startY = getRandomInt(0, d.y);
 	init(options);
 }
 
 function randomSeed() {
-	$('#seed')[0].value = options.seed = getRandomInt(0, 1000000000);
+	$('#seed')[0].value = options.seed = getRandomInt(0, Math.pow(2, 32));
 	init(options);
 }
 
@@ -62,7 +64,7 @@ function showhide() {
 	$('#menu').toggle();
 }
 
-var animId;
+var animFrame;
 var anim = false;
 function toggleAnimate() {
 	if(anim)
@@ -72,18 +74,24 @@ function toggleAnimate() {
 }
 
 function stopAnim() {
-	$('#animate').html('play');
-	anim = false;
-	if(animId != undefined)
-		window.clearInterval(animId)
+	if(anim) {
+		$('#animate').html('play');
+		anim = false;
+		window.cancelAnimationFrame(animFrame);
+	}
 }
 
 function startAnim() {
-	$('#animate').html('pause');
-	anim = true;
-	animId = window.setInterval(function(){
-		animateFrame();
-	}, 50);
+	if(!anim) {
+		$('#animate').html('pause');
+		anim = true;
+		animate();
+	}
+}
+
+function animate() {
+	animateFrame();
+	animFrame = window.requestAnimationFrame(animate);
 }
 
 function animateFrame() {
@@ -114,7 +122,7 @@ function shiftColor(shift, redraw) {
 		copyColor(colorOpts.sc_to, colorOpts.sc_from);
 		colorOpts.sc_to = randomSeededColor();
 
-		colorOpts.lerp_perc = 0
+		colorOpts.lerp_perc = 0;
 	}
 
 	colorOpts.lerp_perc += shift;
@@ -132,12 +140,13 @@ function shiftColor(shift, redraw) {
 }
 
 function checkOpts() {
-	if(parseInt($('#seed')[0].value) != NaN)
-		options.seed = parseInt($('#seed')[0].value);
-	if(parseInt($('#size')[0].value) != NaN)
-		options.cell_size = parseInt($('#size')[0].value);
-	if(parseInt($('#animSpeed')[0].value) != NaN)
-		options.animSpeed = parseInt($('#animSpeed')[0].value);
+	if(!isNaN(parseInt($('#seed')[0].value, 10)))
+		options.seed = parseInt($('#seed')[0].value, 10);
+	if(!isNaN(parseInt($('#size')[0].value, 10))) {
+		$('#size')[0].value = options.cell_size = Math.max(parseInt($('#size')[0].value, 10), 4);
+	}
+	if(!isNaN(parseInt($('#animSpeed')[0].value, 10)))
+		options.animSpeed = parseInt($('#animSpeed')[0].value, 10);
 	options.colorMode = $('#cyclicColor')[0].checked ? 1 : 0;
 	options.drawWalls = options.outline = $("#walls")[0].checked;
 	options.randomStart = $("#randomStart")[0].checked;
@@ -148,10 +157,10 @@ function checkOpts() {
 		$('#startCoords').show();
 	}
 
-	if(parseInt($('#startX')[0].value) != NaN)
-		options.startX = parseInt($('#startX')[0].value);
-	if(parseInt($('#startY')[0].value) != NaN)
-		options.startY = parseInt($('#startY')[0].value);
+	if(!isNaN(parseInt($('#startX')[0].value, 10)))
+		options.startX = parseInt($('#startX')[0].value, 10);
+	if(!isNaN(parseInt($('#startY')[0].value, 10)))
+		options.startY = parseInt($('#startY')[0].value, 10);
 
 	init(options);
 }
@@ -248,7 +257,7 @@ function Vertex (x, y) {
 			}
 		});
 		this.adj.push(this.walls.splice(index, 1)[0]);
-	}
+	};
 
 	//draw function for display
 	this.draw = function (context, o, shiftDepth, maxDepth) {
@@ -291,29 +300,30 @@ function Vertex (x, y) {
 				r: Math.floor(o.endColor.r),
 				g: Math.floor(o.endColor.g),
 				b: Math.floor(o.endColor.b)
-			}
+			};
 
-		var cR = Math.floor(start.r + (end.r - start.r) * colorMod),
-			cG = Math.floor(start.g + (end.g - start.g) * colorMod),
-			cB = Math.floor(start.b + (end.b - start.b) * colorMod);
+		cR = Math.floor(start.r + (end.r - start.r) * colorMod);
+		cG = Math.floor(start.g + (end.g - start.g) * colorMod);
+		cB = Math.floor(start.b + (end.b - start.b) * colorMod);
 
 		//Color the starting cell red
-		//if(options.showStart && x == options.startX && y == options.startY) {
+		if(options.showStart && x == options.startX && y == options.startY) {
 		//    console.log("x: "  + x + " y: " + y);
-		//    cR = 255;
-		//    cB = cG = 0;
-		//}
+		    cR = 255 - cR;
+		    cB = 255 - cB;
+		    cG = 255 - cG;
+		    //cB = cG = 0;
+		}
 
 		//fill
-		context.fillStyle = "rgb("+ cR + "," + cG + "," + cB + ")";
-		context.fillRect(vX, vY, o.cell_size, o.cell_size);
+		draw(cR, cG, cB, vX, vY, o.cell_size, o.cell_size);
 
 		/* Show depth numbers on cells
 		context.fillStyle = "white";
 		context.font = "10px Arial";
 		context.fillText(this.depth,vX,vY + 10);
 		//*/
-	}
+	};
 
 	this.drawWalls = function(context, options) {
 		var vX = options.wallWidth + options.origin_x + (options.cell_size + options.gutter_size) * x,
@@ -339,8 +349,13 @@ function Vertex (x, y) {
 				);
 			}
 		});
-	}
-};
+	};
+}
+
+function draw(r, g, b, startX, startY, endX, endY) {
+	context.fillStyle = "rgb("+ r + "," + g + "," + b + ")";
+	context.fillRect(startX, startY, endX, endY);	
+}
 
 function Maze (w, h, options) {
 	this.w = w;
@@ -375,7 +390,7 @@ function Maze (w, h, options) {
 			return -1;
 
 		return valid[getRandomSeededInt(0, valid.length)];
-	}
+	};
 
 	//Mazify - see http://www.algosome.com/articles/maze-generation-depth-first.html
 	//1 Randomly select a node (or cell) N.
@@ -446,7 +461,7 @@ function Maze (w, h, options) {
 			v = s.pop();
 			if(maze.grid[v.y][v.x].visited == true) {
 				maze.grid[v.y][v.x].visited = false;
-				maze.grid[v.y][v.x].depth = v.d
+				maze.grid[v.y][v.x].depth = v.d;
 				if(v.d > maze.maxDepth)
 					maze.maxDepth = v.d;
 				maze.grid[v.y][v.x].adj.forEach(function(a){
@@ -498,7 +513,7 @@ function Maze (w, h, options) {
 								(options.cell_size + options.gutter_size) * this.grid.length
 			);
 		}
-	}
+	};
 }
 
 function verifyOptions() {
@@ -591,7 +606,7 @@ function lerp_color(c1, c2, p) {
 		r: c1.r + ((c2.r - c1.r) * d),
 		g: c1.g + ((c2.g - c1.g) * d),
 		b: c1.b + ((c2.b - c1.b) * d),
-	}
+	};
 	return r;
 }
 
