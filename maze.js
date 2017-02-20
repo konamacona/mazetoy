@@ -2,20 +2,19 @@
 
 var options = {
 	seed: getRandomInt(0, Math.pow(2, 32)),//11,
-	origin_x: 0,
-	origin_y: 0,
-	cell_size: 7,
-	gutter_size: 0,
-	drawWalls: false,
-	wallColor: "black",
+	originX: 0,
+	originY: 0,
+	cellSize: 4,
+	gutterSize: 0,
+	drawWalls: true,
 	wallWidth: 1,
 	outline: false,
-	startColor: {
+	colorOne: {
 		r: 0,
 		g: 0,
 		b: 0
 	},
-	endColor: {
+	colorTwo: {
 		r: 0,
 		g: 0,
 		b: 0
@@ -31,15 +30,16 @@ var options = {
 
 var colorOpts = {
 	reset 	: true,
-	sc_from : { r: 0, g: 0, b:0 },   //original start color
-	sc_to   : { r: 0, g: 0, b:0 },   //new start color
-	ec_from : { r: 0, g: 0, b:0 },   //original end color
-	ec_to   : { r: 0, g: 0, b:0 },   //new end color
-	lerp_perc: 0 //lerp percentage (how far through the lerp we are)
+	colorOneFrom : { r: 0, g: 0, b:0 },   //original start color
+	colorOneTo   : { r: 0, g: 0, b:0 },   //new start color
+	colorTwoFrom : { r: 0, g: 0, b:0 },   //original end color
+	colorTwoTo   : { r: 0, g: 0, b:0 },   //new end color
+	lerpPercentage: 0 //lerp percentage (how far through the lerp we are)
 };
 
 var seed = options.seed;  //40
-var maze, canvas, context;
+var maze, canvas, context, imageData, currentAnimationFrame;
+var isAnimating = false;
 
 function zeroStart() {
 	options.startX = 0;
@@ -64,34 +64,32 @@ function showhide() {
 	$('#menu').toggle();
 }
 
-var animFrame;
-var anim = false;
 function toggleAnimate() {
-	if(anim)
+	if(isAnimating)
 		stopAnim();
 	else
 		startAnim();
 }
 
 function stopAnim() {
-	if(anim) {
+	if(isAnimating) {
 		$('#animate').html('play');
-		anim = false;
-		window.cancelAnimationFrame(animFrame);
+		isAnimating = false;
+		window.cancelAnimationFrame(currentAnimationFrame);
 	}
 }
 
 function startAnim() {
-	if(!anim) {
+	if(!isAnimating) {
 		$('#animate').html('pause');
-		anim = true;
+		isAnimating = true;
 		animate();
 	}
 }
 
 function animate() {
 	animateFrame();
-	animFrame = window.requestAnimationFrame(animate);
+	currentAnimationFrame = window.requestAnimationFrame(animate);
 }
 
 function animateFrame() {
@@ -108,31 +106,31 @@ function animateFrame() {
 function shiftColor(shift, redraw) {
 	if(colorOpts.reset) {
 		colorOpts.reset = false;
-		colorOpts.lerp_perc = 0;
-		copyColor(options.startColor, colorOpts.sc_from);
-		copyColor(options.endColor, colorOpts.ec_from);
-		colorOpts.sc_to = randomSeededColor();
-		colorOpts.ec_to = randomSeededColor();
+		colorOpts.lerpPercentage = 0;
+		copyColor(options.colorOne, colorOpts.colorOneFrom);
+		copyColor(options.colorTwo, colorOpts.colorTwoFrom);
+		colorOpts.colorOneTo = randomSeededColor();
+		colorOpts.colorTwoTo = randomSeededColor();
 	}
 
-	if(colorOpts.lerp_perc >= 100) {
-		copyColor(colorOpts.ec_to, colorOpts.ec_from);
-		colorOpts.ec_to = randomSeededColor();
+	if(colorOpts.lerpPercentage >= 100) {
+		copyColor(colorOpts.colorTwoTo, colorOpts.colorTwoFrom);
+		colorOpts.colorTwoTo = randomSeededColor();
 
-		copyColor(colorOpts.sc_to, colorOpts.sc_from);
-		colorOpts.sc_to = randomSeededColor();
+		copyColor(colorOpts.colorOneTo, colorOpts.colorOneFrom);
+		colorOpts.colorOneTo = randomSeededColor();
 
-		colorOpts.lerp_perc = 0;
+		colorOpts.lerpPercentage = 0;
 	}
 
-	colorOpts.lerp_perc += shift;
+	colorOpts.lerpPercentage += shift;
 
-	options.startColor = lerp_color(colorOpts.sc_from,
-									colorOpts.sc_to,
-									colorOpts.lerp_perc);
-	options.endColor = lerp_color(colorOpts.ec_from,
-								  colorOpts.ec_to,
-								  colorOpts.lerp_perc);
+	options.colorOne = lerp_color(colorOpts.colorOneFrom,
+									colorOpts.colorOneTo,
+									colorOpts.lerpPercentage);
+	options.colorTwo = lerp_color(colorOpts.colorTwoFrom,
+								  colorOpts.colorTwoTo,
+								  colorOpts.lerpPercentage);
 
 	if(redraw && maze != undefined && context != undefined) {
 		maze.draw(context, options, 0);
@@ -143,7 +141,7 @@ function checkOpts() {
 	if(!isNaN(parseInt($('#seed')[0].value, 10)))
 		options.seed = parseInt($('#seed')[0].value, 10);
 	if(!isNaN(parseInt($('#size')[0].value, 10))) {
-		$('#size')[0].value = options.cell_size = Math.max(parseInt($('#size')[0].value, 10), 4);
+		$('#size')[0].value = options.cellSize = Math.max(parseInt($('#size')[0].value, 10), 1);
 	}
 	if(!isNaN(parseInt($('#animSpeed')[0].value, 10)))
 		options.animSpeed = parseInt($('#animSpeed')[0].value, 10);
@@ -166,10 +164,11 @@ function checkOpts() {
 }
 
 function setUi() {
-	$('#size')[0].value = options.cell_size;
+	$('#size')[0].value = options.cellSize;
 	$('#seed')[0].value = options.seed;
 	$('#cyclicColor')[0].checked = options.colorMode == 1;
 	$('#randomStart')[0].checked = options.randomStart;
+	$('#walls')[0].checked = options.drawWalls;
 	$('#animSpeed')[0].value = options.animSpeed;
 	$('#animateColor')[0].checked = options.animColor;
 	if(options.randomStart) {
@@ -195,8 +194,8 @@ function calculateMazeDimensions() {
 	var dim = { x: 0, y: 0 };
 
 	if(canvas != undefined) {
-		dim.x = Math.floor(canvas.width / (options.cell_size + options.gutter_size));
-		dim.y = Math.floor(canvas.height / (options.cell_size + options.gutter_size));
+		dim.x = Math.floor(canvas.width / (options.cellSize + options.gutterSize));
+		dim.y = Math.floor(canvas.height / (options.cellSize + options.gutterSize));
 	}
 
 	return dim;
@@ -204,7 +203,7 @@ function calculateMazeDimensions() {
 
 function init(options) {
 	var wasAnim = false;
-	if(anim) {
+	if(isAnimating) {
 		console.log('toggling anim');
 		wasAnim = true;
 		toggleAnimate();
@@ -224,11 +223,12 @@ function init(options) {
 
 	var d = calculateMazeDimensions();
 
-	options.startColor = randomSeededColor();
-	options.endColor = randomSeededColor();
+	options.colorOne = randomSeededColor();
+	options.colorTwo = randomSeededColor();
 
 	colorOpts.reset = true;
 
+	imageData = context.getImageData(0, 0, window.innerWidth, window.innerHeight);
 	maze = new Maze(d.x, d.y, options);
 
 	maze.draw(context, options);
@@ -245,6 +245,16 @@ function Vertex (x, y) {
 	this.adj = [];
 	this.walls = [];
 	this.depth = 1;
+	
+	//draw variables
+	this.wallWidth = 0;
+	this.drawX = 0;
+	this.drawY = 0;
+	this.colorMod = 0;
+	this.r = 0;
+	this.g = 0;
+	this.b = 0;
+	
 
 	//removes the wall between this and vertex, adding it to the adjacency list
 	this.breakWall = function(vertex, log) {
@@ -266,95 +276,96 @@ function Vertex (x, y) {
 			this.depth = Math.floor((this.depth + shiftDepth) % maxDepth);
 		}
 
-		var ww = o.drawWalls ? o.wallWidth : 0;
-		var vX = ww + o.origin_x + (o.cell_size + o.gutter_size) * x,
-			vY = ww + o.origin_y + (o.cell_size + options.gutter_size) * y;
-		var cR, cG, cB, colorMod;
+		this.wallWidth = o.drawWalls ? o.wallWidth : 0;
+		this.drawX = this.wallWidth + o.originX + (o.cellSize + o.gutterSize) * x;
+		this.drawY = this.wallWidth + o.originY + (o.cellSize + o.gutterSize) * y;
 
 		switch(o.colorMode){
 			case 0: //End to end color
-				colorMod = this.depth/o.maxDepth;
+				this.colorMod = this.depth/o.maxDepth;
 				break;
 			case 1: //Cyclic color
-				if(this.depth < (o.maxDepth/2))
-					colorMod = this.depth/o.maxDepth/0.5;
+				if(this.depth < (o.maxDepth / 2))
+					this.colorMod = this.depth / o.maxDepth * 2;
 				else
-					colorMod = (1 - (this.depth/o.maxDepth))/0.5;
+					this.colorMod = (1 - (this.depth/o.maxDepth)) * 2;
 				break;
-			/*
 			case 2:
-				colorMod = (this.depth/o.maxDepth/0.5) - 0.5;
+				this.colorMod = (this.depth/o.maxDepth/0.5) - 0.5;
 				break;
 			case 3:
-				colorMod = 0.5 - (this.depth/o.maxDepth);
+				this.colorMod = 0.5 - (this.depth/o.maxDepth);
 				break;
-			*/
 		}
 
-		var start = {
-				r: Math.floor(o.startColor.r),
-				g: Math.floor(o.startColor.g),
-				b: Math.floor(o.startColor.b)
-			},
-			end = {
-				r: Math.floor(o.endColor.r),
-				g: Math.floor(o.endColor.g),
-				b: Math.floor(o.endColor.b)
-			};
+		this.r = o.colorOne.r + (o.colorTwo.r - o.colorOne.r) * this.colorMod;
+		this.g = o.colorOne.g + (o.colorTwo.g - o.colorOne.g) * this.colorMod;
+		this.b = o.colorOne.b + (o.colorTwo.b - o.colorOne.b) * this.colorMod;
 
-		cR = Math.floor(start.r + (end.r - start.r) * colorMod);
-		cG = Math.floor(start.g + (end.g - start.g) * colorMod);
-		cB = Math.floor(start.b + (end.b - start.b) * colorMod);
-
-		//Color the starting cell red
+		//Color the starting cell inverted
 		if(options.showStart && x == options.startX && y == options.startY) {
-		//    console.log("x: "  + x + " y: " + y);
-		    cR = 255 - cR;
-		    cB = 255 - cB;
-		    cG = 255 - cG;
-		    //cB = cG = 0;
+		    this.r = 255 - this.r;
+		    this.b = 255 - this.b;
+		    this.g = 255 - this.g;
 		}
 
 		//fill
-		draw(cR, cG, cB, vX, vY, o.cell_size, o.cell_size);
-
-		/* Show depth numbers on cells
-		context.fillStyle = "white";
-		context.font = "10px Arial";
-		context.fillText(this.depth,vX,vY + 10);
-		//*/
+		drawRect(
+			this.r, 
+			this.g, 
+			this.b, 
+			this.drawX, 
+			this.drawY, 
+			this.drawX + o.cellSize, 
+			this.drawY + o.cellSize
+		);
 	};
 
+	var wallIndex;
 	this.drawWalls = function(context, options) {
-		var vX = options.wallWidth + options.origin_x + (options.cell_size + options.gutter_size) * x,
-			vY = options.wallWidth + options.origin_y + (options.cell_size + options.gutter_size) * y;
-
-		context.fillStyle = options.wallColor;
-		var w = options.wallWidth;
-
-		this.walls.forEach(function(wall){
-			if(wall.x == x - 1 && wall.y == y) { //left
-				context.fillRect(
-					vX - w - options.gutter_size,
-					vY - w - options.gutter_size,
-					(2 * w) + options.gutter_size,
-					(2 * w) + (2 * options.gutter_size) + options.cell_size
-				);
-			} else if(wall.x == x && wall.y == y - 1) { // top
-				context.fillRect(
-					vX - w - options.gutter_size,
-					vY - w - options.gutter_size,
-					(2 * w) + (2 * options.gutter_size) + options.cell_size,
-					(2 * w) + options.gutter_size
+		this.wallWidth = options.drawWalls ? options.wallWidth : 0;
+		this.drawX = this.wallWidth + options.originX + (options.cellSize + options.gutterSize) * x;
+		this.drawY = this.wallWidth + options.originY + (options.cellSize + options.gutterSize) * y;
+		
+		for(wallIndex = this.walls.length - 1; wallIndex >= 0; wallIndex-- ) {
+			if(this.walls[wallIndex].x == x - 1 && this.walls[wallIndex].y == y) {
+				drawRect(0,0,0,//255, 255, 255,
+					this.drawX - this.wallWidth - options.gutterSize,
+					this.drawY - this.wallWidth - options.gutterSize,
+					(this.drawX - this.wallWidth - options.gutterSize) + (2 * this.wallWidth) + options.gutterSize,
+					(this.drawY - this.wallWidth - options.gutterSize) + (2 * this.wallWidth) + (2 * options.gutterSize) + options.cellSize
+				);	
+			} else if (this.walls[wallIndex].x == x && this.walls[wallIndex].y == y - 1) {
+				drawRect(0,0,0,//255, 255, 255,
+					this.drawX - this.wallWidth - options.gutterSize,
+					this.drawY - this.wallWidth - options.gutterSize,
+					(this.drawX - this.wallWidth - options.gutterSize) + (2 * this.wallWidth) + (2 * options.gutterSize) + options.cellSize,
+					(this.drawY - this.wallWidth - options.gutterSize) + (2 * this.wallWidth) + options.gutterSize
 				);
 			}
-		});
+		}
 	};
 }
 
-function draw(r, g, b, startX, startY, endX, endY) {
-	context.fillStyle = "rgb("+ r + "," + g + "," + b + ")";
-	context.fillRect(startX, startY, endX, endY);	
+var drawX = 0, drawY = 0; //avoid new vars to avoid GC
+function drawRect(r, g, b, startX, startY, endX, endY) {
+	for(drawX = startX; drawX < endX; drawX++) {
+		for(drawY = startY; drawY < endY; drawY++) {
+			setPixel(drawX, drawY, r, g, b);
+		}
+	}
+}
+
+function setPixel(x, y, r, g, b) {
+	var offset = (x + y * imageData.width) * 4;
+	imageData.data[offset + 0] = r;
+	imageData.data[offset + 1] = g;
+	imageData.data[offset + 2] = b;
+	imageData.data[offset + 3] = 255;
+}
+
+function drawOut() {
+	context.putImageData(imageData, 0, 0);
 }
 
 function Maze (w, h, options) {
@@ -471,6 +482,8 @@ function Maze (w, h, options) {
 		}
 	}
 
+	var x, y;
+
 	//Draw function for display
 	this.draw = function (context, options, shiftDepth) {
 		if(shiftDepth == undefined)
@@ -479,25 +492,22 @@ function Maze (w, h, options) {
 			shiftDepth *= this.maxDepth;
 
 		//add room for gutters and walls to origin
-		options.origin_x += options.gutter_size;
-		options.origin_y += options.gutter_size;
+		options.originX += options.gutterSize;
+		options.originY += options.gutterSize;
 
 		options.maxDepth = this.maxDepth;
 
-		//Clear the canvas
-		//context.clearRect(0, 0, canvas.width, canvas.height);
-
 		//draw squares
-		for(var y = 0; y < this.grid.length; y++) {
-			for(var x = 0; x < this.grid[y].length; x++) {
+		for(y = 0; y < this.grid.length; y++) {
+			for(x = 0; x < this.grid[y].length; x++) {
 				this.grid[y][x].draw(context, options, shiftDepth, this.maxDepth);
 			}
 		}
 
 		//Draw walls seperately to avoid overlap
 		if(options.drawWalls) {
-			for(var y = 0; y < this.grid.length; y++) {
-				for(var x = 0; x < this.grid[y].length; x++) {
+			for(y = 0; y < this.grid.length; y++) {
+				for(x = 0; x < this.grid[y].length; x++) {
 					this.grid[y][x].drawWalls(context, options);
 				}
 			}
@@ -507,33 +517,35 @@ function Maze (w, h, options) {
 		if(options.outline == true) {
 			context.lineWidth = options.wallWidth * 2;
 			context.strokeStyle = options.wallColor;
-			context.strokeRect( options.origin_x + (options.drawWalls ? options.wallWidth : 0),// - options.wallWidth,
-								options.origin_y + (options.drawWalls ? options.wallWidth : 0),// - options.wallWidth
-								(options.cell_size + options.gutter_size) * this.grid[0].length,
-								(options.cell_size + options.gutter_size) * this.grid.length
+			context.strokeRect( options.originX + (options.drawWalls ? options.wallWidth : 0),// - options.wallWidth,
+								options.originY + (options.drawWalls ? options.wallWidth : 0),// - options.wallWidth
+								(options.cellSize + options.gutterSize) * this.grid[0].length,
+								(options.cellSize + options.gutterSize) * this.grid.length
 			);
 		}
+		
+		drawOut();
 	};
 }
 
 function verifyOptions() {
 	//Default some options
-	if(options.origin_x == undefined)
-		options.origin_x = 0;
-	if(options.origin_y == undefined)
-		options.origin_y = 0;
-	if(options.cell_size == undefined)
-		options.cell_size = 5;
-	if(options.gutter_size == undefined)
-		options.gutter_size = 0;
-	if(options.startColor == undefined)
-		options.startColor = {
+	if(options.originX == undefined)
+		options.originX = 0;
+	if(options.originY == undefined)
+		options.originY = 0;
+	if(options.cellSize == undefined)
+		options.cellSize = 3;
+	if(options.gutterSize == undefined)
+		options.gutterSize = 0;
+	if(options.colorOne == undefined)
+		options.colorOne = {
 			red: 0,
 			green: 153,
 			blue: 0
 		};
-	if(options.endColor == undefined)
-		options.endColor = {
+	if(options.colorTwo == undefined)
+		options.colorTwo = {
 			red: 0,
 			green: 255,
 			blue: 153
@@ -551,7 +563,7 @@ function saveToDisk() {
 	if(canvas != undefined) {
 		 // here is the most important part because if you dont replace you will get a DOM 18 exception.
 		var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
-		window.location.href=image; // it will save locally
+		window.location.href=image ; // it will save locally
 	}
 }
 
@@ -559,7 +571,7 @@ function saveToDisk() {
 // Returns a random integer between min (included) and max (included)
 // Using Math.round() will give you a non-uniform distribution!
 function getRandomSeededInt(min, max) {
-	return Math.floor(random() * (max - min)) + min;
+	return Math.floor(seededRandom() * (max - min)) + min;
 }
 
 // Returns a random integer between min (included) and max (excluded)
@@ -570,9 +582,10 @@ function getRandomInt(min, max) {
 
 //http://stackoverflow.com/questions/521295/javascript-random-seeds
 // rpovides seeded random values
-function random() {
-	var x = Math.sin(seed++) * 10000;
-	return x - Math.floor(x);
+var randX = 0; //avoid new vars to avoid GC
+function seededRandom() {
+	randX = Math.sin(seed++) * 10000;
+	return randX - Math.floor(randX);
 }
 
 function randomSeededColor() {
