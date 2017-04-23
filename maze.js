@@ -56,8 +56,11 @@ function randomStart() {
 }
 
 function randomSeed() {
+	//var wasAnim = isAnimating;
+	//if(wasAnim) stopAnim();
 	$('#seed')[0].value = options.seed = getRandomInt(0, Math.pow(2, 32));
 	init(options);
+	//if(wasAnim) startAnim();
 }
 
 function showhide() {
@@ -141,7 +144,7 @@ function checkOpts() {
 	if(!isNaN(parseInt($('#seed')[0].value, 10)))
 		options.seed = parseInt($('#seed')[0].value, 10);
 	if(!isNaN(parseInt($('#size')[0].value, 10))) {
-		$('#size')[0].value = options.cellSize = Math.max(parseInt($('#size')[0].value, 10), 1);
+		$('#size')[0].value = options.cellSize = Math.max(parseInt($('#size')[0].value, 10), 4);
 	}
 	if(!isNaN(parseInt($('#animSpeed')[0].value, 10)))
 		options.animSpeed = parseInt($('#animSpeed')[0].value, 10);
@@ -202,11 +205,9 @@ function calculateMazeDimensions() {
 }
 
 function init(options) {
-	var wasAnim = false;
-	if(isAnimating) {
-		console.log('toggling anim');
-		wasAnim = true;
-		toggleAnimate();
+	var wasAnim = isAnimating;
+	if(wasAnim) {
+		stopAnim();
 	}
 
 	if(canvas == undefined || context == undefined)
@@ -234,7 +235,7 @@ function init(options) {
 	maze.draw(context, options);
 
 	if(wasAnim) {
-		toggleAnimate();
+		startAnim();
 	}
 }
 
@@ -535,7 +536,7 @@ function verifyOptions() {
 	if(options.originY == undefined)
 		options.originY = 0;
 	if(options.cellSize == undefined)
-		options.cellSize = 3;
+		options.cellSize = 4;
 	if(options.gutterSize == undefined)
 		options.gutterSize = 0;
 	if(options.colorOne == undefined)
