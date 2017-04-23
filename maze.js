@@ -56,11 +56,8 @@ function randomStart() {
 }
 
 function randomSeed() {
-	//var wasAnim = isAnimating;
-	//if(wasAnim) stopAnim();
 	$('#seed')[0].value = options.seed = getRandomInt(0, Math.pow(2, 32));
 	init(options);
-	//if(wasAnim) startAnim();
 }
 
 function showhide() {
