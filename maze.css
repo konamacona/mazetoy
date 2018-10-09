@@ -37,6 +37,19 @@ canvas {
 
 #showhide {
 	position: absolute;
+	background: none;
+	border: none;
+	border-radius: 0;
+	color: white;
+}
+
+button:not(#showhide) {
+	border: 1px solid white;
+	background: none;
+}
+
+button:not(#showhide):hover {
+	background: white;
 }
 
 #animSpeed, #size {

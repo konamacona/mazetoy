@@ -1,34 +1,43 @@
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>Mazetoy: Maze Visualization</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="maze.js"></script>
-<link rel="stylesheet" type="text/css" href="maze.css">
-
-<button id='showhide' onclick="showhide()">menu</button>
-<div id = 'menu'>
-	Seed:  &nbsp <input type="number" id="seed"/> &nbsp <button id='randomSeed' onclick='randomSeed()'>randomize</button>
-	<br>
-	Animate:
-	<button id='shiftDepth' onclick='animateFrame()'>frame</button>
-	<button id='animate' onclick='toggleAnimate()'>play</button>
-	Speed: <input type="number" id="animSpeed" style="width:40px"/>
-	<br>
-	&nbsp;&nbsp;&nbsp;&nbsp;Animate Color:<input type="checkbox" id="animateColor"/>
-	<br>
-	Cyclic Color Mode:  &nbsp<input type="checkbox" id="cyclicColor"/>
-	<br>
-	Cell Size:  &nbsp <input type="number" id="size"/> &nbsp (minimum 4)
-	<br>
-	Walls &nbsp<input type="checkbox" id="walls"/>
-	<br>
-	Seed Start &nbsp<input type="checkbox" id="randomStart"/>
-	<br>
-	<div id = 'startCoords'>
-	Start Co-ords:  &nbsp X: <input type="number" id="startX"/>  Y: <input type="number" id="startY"/>
-	<br>
-	<button id = 'zeroStart' onclick="zeroStart()">Zero</button><button id = 'randomize' onclick="randomStart()">Randomize</button>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+	<script src="maze.js"></script>
+	<link rel="stylesheet" type="text/css" href="maze.css">
+</head>
+<body>
+	<button id='showhide' onclick="showhide()">menu</button>
+	<div id = 'menu'>
+		Seed:  &nbsp <input type="number" id="seed"/> &nbsp <button id='randomSeed' onclick='randomSeed()'>randomize</button>
+		<br>
+		Animate:
+		<button id='shiftDepth' onclick='animateFrame()'>frame</button>
+		<button id='animate' onclick='toggleAnimate()'>play</button>
+		Speed: <input type="number" id="animSpeed" style="width:40px"/>
+		<br>
+		&nbsp;&nbsp;&nbsp;&nbsp;Animate Color:<input type="checkbox" id="animateColor"/>
+		<br>
+		Cyclic Color Mode:  &nbsp<input type="checkbox" id="cyclicColor"/>
+		<br>
+		Cell Size:  &nbsp <input type="number" id="size"/> &nbsp (minimum 4)
+		<br>
+		Walls &nbsp<input type="checkbox" id="walls"/>
+		<br>
+		Seed Start &nbsp<input type="checkbox" id="randomStart"/>
+		<br>
+		<div id = 'startCoords'>
+		Start Co-ords:  &nbsp X: <input type="number" id="startX"/>  Y: <input type="number" id="startY"/>
+		<br>
+		<button id = 'zeroStart' onclick="zeroStart()">Zero</button><button id = 'randomize' onclick="randomStart()">Randomize</button>
+		</div>
+		<br>
+		<button id='saveToPNG' onclick="saveToDisk()">Save to PNG</button> You may need to add '.png' to the file
 	</div>
-	<br>
-	<button id='saveToPNG' onclick="saveToDisk()">Save to PNG</button> You may need to add '.png' to the file
-</div>
-
-<canvas id='canvas'></canvas>
+	<canvas id='canvas'></canvas>
+</body>
+</html>
